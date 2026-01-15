@@ -8,9 +8,17 @@ class ViewNotesScreen extends StatelessWidget {
   const ViewNotesScreen({super.key, required this.course});
 
   Future<void> _openFile(String url) async {
-    final uri = Uri.parse(url);
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
+    // Convert preview link to direct download link
+    final fixedUrl = url.replaceAll("dl=0", "dl=1");
+
+    final uri = Uri.parse(fixedUrl);
+
+    await launchUrl(
+      uri,
+      mode: LaunchMode.externalApplication,
+    );
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -26,7 +34,6 @@ class ViewNotesScreen extends StatelessWidget {
         stream: FirebaseFirestore.instance
             .collection("notes")
             .where("course", isEqualTo: course)
-            .orderBy("uploaded_at", descending: true)
             .snapshots(),
 
         builder: (context, snapshot) {
