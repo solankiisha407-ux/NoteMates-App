@@ -4,111 +4,87 @@ import 'package:file_picker/file_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-import '../services/dropbox_service.dart';
-
 class UploadNotesScreen extends StatefulWidget {
-  const UploadNotesScreen({super.key});
+  UploadNotesScreen({super.key}); // ❌ NOT const
 
   @override
   State<UploadNotesScreen> createState() => _UploadNotesScreenState();
 }
 
 class _UploadNotesScreenState extends State<UploadNotesScreen> {
-  PlatformFile? _pickedFile;
+  PlatformFile? pickedFile;
 
-  final TextEditingController _titleController = TextEditingController();
-  final TextEditingController _subjectController = TextEditingController();
-  final TextEditingController _priceController = TextEditingController();
+  final titleController = TextEditingController();
+  final subjectController = TextEditingController();
+  final priceController = TextEditingController();
 
-  String? selectedCourse;
   bool isPaid = false;
-  bool _isUploading = false;
+  bool uploading = false;
 
-  // 📂 Pick File
+  String selectedCourse = "BSc IT";
+
+  final List<String> courses = [
+    "BSc IT",
+    "BCA",
+    "BCom",
+    "Engineering",
+    "Other",
+  ];
+
+  /// PICK PDF FILE
   Future<void> pickFile() async {
-    try {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['pdf', 'jpg', 'png'],
-      );
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['pdf'],
+    );
 
-      if (result != null) {
-        setState(() {
-          _pickedFile = result.files.single;
-        });
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text("Error picking file: $e")));
+    if (result != null) {
+      setState(() {
+        pickedFile = result.files.first;
+      });
     }
   }
 
-  // ☁️ Upload to Dropbox + Save to Firestore
-  Future<void> uploadFile() async {
-    if (_pickedFile == null ||
-        _titleController.text.isEmpty ||
-        selectedCourse == null ||
-        _subjectController.text.isEmpty ||
-        (isPaid && _priceController.text.isEmpty)) {
+  /// UPLOAD NOTES
+  Future<void> uploadNotes() async {
+    if (pickedFile == null ||
+        titleController.text.isEmpty ||
+        subjectController.text.isEmpty ||
+        (isPaid && priceController.text.isEmpty)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please fill all details")),
+        const SnackBar(content: Text("Fill all required fields")),
       );
       return;
     }
 
-    setState(() => _isUploading = true);
+    setState(() => uploading = true);
 
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) throw "User not logged in";
 
-      final file = File(_pickedFile!.path!);
-      final fileName =
-          "${user.uid}_${DateTime.now().millisecondsSinceEpoch}_${_pickedFile!.name}";
-
-      // 🔥 UPLOAD FILE TO DROPBOX
-      final dropboxUrl =
-      await DropboxService.uploadFile(
-        file: file,
-        fileName: fileName,
-      );
-
-      if (dropboxUrl == null) {
-        throw "Dropbox upload failed";
-      }
-
-      // 🔥 SAVE DATA TO FIRESTORE
       await FirebaseFirestore.instance.collection("notes").add({
-        "title": _titleController.text.trim(),
+        "title": titleController.text.trim(),
+        "subject": subjectController.text.trim(),
         "course": selectedCourse,
-        "subject": _subjectController.text.trim(),
         "isPaid": isPaid,
-        "price": isPaid
-            ? int.tryParse(_priceController.text.trim()) ?? 0
-            : 0,
-        "file_url": dropboxUrl,
+        "price": isPaid ? int.parse(priceController.text) : 0,
+        "file_url": "TEMP_URL", // connect storage later
         "uploaded_by": user.email,
-        "uploaded_at": Timestamp.now(),
+        "uploadedAt": Timestamp.now(),
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Uploaded Successfully 🎉")),
+        const SnackBar(content: Text("Notes Uploaded Successfully ✅")),
       );
 
-      setState(() {
-        _pickedFile = null;
-        _titleController.clear();
-        _subjectController.clear();
-        _priceController.clear();
-        selectedCourse = null;
-        isPaid = false;
-      });
+      Navigator.pop(context);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Upload failed: $e")),
+        SnackBar(content: Text("Error: $e")),
       );
     } finally {
-      setState(() => _isUploading = false);
+      setState(() => uploading = false);
     }
   }
 
@@ -118,126 +94,130 @@ class _UploadNotesScreenState extends State<UploadNotesScreen> {
       backgroundColor: const Color(0xFFF3E5F5),
       appBar: AppBar(
         backgroundColor: const Color(0xFF7E57C2),
-        title: const Text(
-          "Upload Notes",
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-        centerTitle: true,
+        title: const Text("Upload Notes"),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            /// TITLE
+            TextField(
+              controller: titleController,
+              decoration: const InputDecoration(
+                labelText: "Notes Title",
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            /// SUBJECT
+            TextField(
+              controller: subjectController,
+              decoration: const InputDecoration(
+                labelText: "Subject",
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            /// COURSE DROPDOWN
+            DropdownButtonFormField<String>(
+              value: selectedCourse,
+              items: courses
+                  .map(
+                    (course) => DropdownMenuItem(
+                  value: course,
+                  child: Text(course),
+                ),
+              )
+                  .toList(),
+              onChanged: (value) {
+                setState(() {
+                  selectedCourse = value!;
+                });
+              },
+              decoration: const InputDecoration(
+                labelText: "Select Course",
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            /// PAID / FREE SWITCH
+            SwitchListTile(
+              title: const Text("Paid Notes"),
+              subtitle: const Text("Enable if notes are paid"),
+              value: isPaid,
+              activeColor: Colors.deepPurple,
+              onChanged: (value) {
+                setState(() {
+                  isPaid = value;
+                });
+              },
+            ),
+
+            /// PRICE FIELD (ONLY IF PAID)
+            if (isPaid) ...[
+              const SizedBox(height: 10),
               TextField(
-                controller: _titleController,
-                decoration: _inputDecoration("Enter Notes Title"),
-              ),
-
-              const SizedBox(height: 15),
-
-              DropdownButtonFormField<String>(
-                value: selectedCourse,
-                decoration: _inputDecoration("Select Course"),
-                items: ["BSc IT", "BSc CS", "BAF"]
-                    .map(
-                      (course) => DropdownMenuItem(
-                    value: course,
-                    child: Text(course),
-                  ),
-                )
-                    .toList(),
-                onChanged: (value) {
-                  setState(() => selectedCourse = value);
-                },
-              ),
-
-              const SizedBox(height: 15),
-
-              TextField(
-                controller: _subjectController,
-                decoration: _inputDecoration("Enter Subject Name"),
-              ),
-
-              const SizedBox(height: 15),
-
-              SwitchListTile(
-                title: const Text("Paid Notes?"),
-                activeColor: const Color(0xFF7E57C2),
-                value: isPaid,
-                onChanged: (value) {
-                  setState(() => isPaid = value);
-                },
-              ),
-
-              if (isPaid)
-                TextField(
-                  controller: _priceController,
-                  keyboardType: TextInputType.number,
-                  decoration: _inputDecoration("Enter Price (₹)"),
-                ),
-
-              const SizedBox(height: 20),
-
-              GestureDetector(
-                onTap: pickFile,
-                child: Container(
-                  height: 140,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    border:
-                    Border.all(color: const Color(0xFF7E57C2)),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Center(
-                    child: Text(
-                      _pickedFile == null
-                          ? "Tap to select PDF / Image"
-                          : "Selected: ${_pickedFile!.name}",
-                      style: const TextStyle(
-                          color: Color(0xFF4A148C)),
-                    ),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 25),
-
-              ElevatedButton.icon(
-                onPressed: _isUploading ? null : uploadFile,
-                icon: const Icon(Icons.cloud_upload,
-                    color: Colors.white),
-                label: _isUploading
-                    ? const CircularProgressIndicator(
-                    color: Colors.white)
-                    : const Text(
-                  "Upload",
-                  style: TextStyle(color: Colors.white),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF7E57C2),
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 50, vertical: 15),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
-                  ),
+                controller: priceController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: "Price (₹)",
+                  border: OutlineInputBorder(),
                 ),
               ),
             ],
-          ),
-        ),
-      ),
-    );
-  }
 
-  InputDecoration _inputDecoration(String hint) {
-    return InputDecoration(
-      hintText: hint,
-      filled: true,
-      fillColor: Colors.white,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(20),
+            const SizedBox(height: 20),
+
+            /// FILE PICKER
+            GestureDetector(
+              onTap: pickFile,
+              child: Container(
+                height: 120,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border.all(color: Colors.deepPurple),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Center(
+                  child: Text(
+                    pickedFile == null
+                        ? "Tap to select PDF"
+                        : pickedFile!.name,
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 30),
+
+            /// UPLOAD BUTTON
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: uploading ? null : uploadNotes,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF7E57C2),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                child: uploading
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text(
+                  "Upload Notes",
+                  style: TextStyle(fontSize: 16),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -1,163 +1,178 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'view_notes_screen.dart';
-import 'upload_notes_screen.dart';
+import 'package:notemates/screens/view_notes_screen.dart';
+import 'view_question_papers_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
-
     return Scaffold(
       backgroundColor: const Color(0xFFF3E5F5),
+
       appBar: AppBar(
-        title: const Text("NoteMates"),
         backgroundColor: const Color(0xFF7E57C2),
-        centerTitle: true,
-        elevation: 3,
+        elevation: 0,
+        title: const Text("Welcome Back"),
         actions: [
           IconButton(
+            icon: const Icon(Icons.logout),
             onPressed: () async {
               await FirebaseAuth.instance.signOut();
               Navigator.popUntil(context, (route) => route.isFirst);
             },
-            icon: const Icon(Icons.logout, color: Colors.white),
-          )
+          ),
         ],
       ),
 
-      body: Padding(
+      body: ListView(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            const SizedBox(height: 10),
+        children: [
+          const SizedBox(height: 8),
 
-            const Text(
-              "Welcome 👋",
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF4A148C),
-              ),
-            ),
-            Text(
-              user?.email ?? "User",
-              style: const TextStyle(color: Colors.black54),
-            ),
+          /// NOTES
+          bigCard(
+            icon: Icons.menu_book,
+            title: "Notes",
+            subtitle: "Access & download notes",
+            buttonText: "View Notes",
+            enabled: true,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ViewNotesScreen(),
+                ),
+              );
+            },
+          ),
 
-            const SizedBox(height: 20),
+          /// QUESTION PAPERS
+          bigCard(
+            icon: Icons.assignment,
+            title: "Question Papers",
+            subtitle: "Previous year question papers",
+            buttonText: "View Papers",
+            enabled: true,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const ViewQuestionPapersScreen(),
+                ),
+              );
+            },
+          ),
 
-            TextField(
-              decoration: InputDecoration(
-                hintText: "Search courses or notes...",
-                prefixIcon: const Icon(Icons.search, color: Color(0xFF4A148C)),
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(30),
-                    borderSide: BorderSide.none),
-              ),
-            ),
+          /// AI FEATURES
+          bigCard(
+            icon: Icons.auto_awesome,
+            title: "AI Features",
+            subtitle: "Smart learning tools",
+            buttonText: "Coming Soon",
+            enabled: false,
+          ),
 
-            const SizedBox(height: 20),
+          const SizedBox(height: 24),
 
-            const Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                "Courses 🎓",
-                style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF6A1B9A)),
-              ),
-            ),
-
-            const SizedBox(height: 10),
-
-            Expanded(
-              child: StreamBuilder<QuerySnapshot>(
-                stream:
-                FirebaseFirestore.instance.collection("notes").snapshots(),
-                builder: (context, snapshot) {
-                  if (!snapshot.hasData) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-
-                  final notes = snapshot.data!.docs;
-
-                  final courses = notes
-                      .map((doc) => doc["course"])
-                      .where((c) => c != null)
-                      .toSet()
-                      .toList();
-
-                  if (courses.isEmpty) {
-                    return const Center(
-                      child: Text(
-                        "No courses yet 😕\nUpload notes to get started!",
-                        textAlign: TextAlign.center,
-                      ),
-                    );
-                  }
-
-                  return GridView.builder(
-                    gridDelegate:
-                    const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      mainAxisSpacing: 16,
-                      crossAxisSpacing: 16,
-                    ),
-                    itemCount: courses.length,
-                    itemBuilder: (context, index) {
-                      String course = courses[index];
-                      return courseCard(context, course);
-                    },
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
+          /// PROFILE
+          bigCard(
+            icon: Icons.person,
+            title: "Profile",
+            subtitle: "Manage your account",
+            buttonText: "Coming Soon",
+            enabled: false,
+          ),
+        ],
       ),
-
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(context,
-              MaterialPageRoute(builder: (_) => const UploadNotesScreen()));
-        },
-        backgroundColor: const Color(0xFF7E57C2),
-        child: const Icon(Icons.cloud_upload, color: Colors.white),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
 
-  Widget courseCard(BuildContext context, String course) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => ViewNotesScreen(course: course)),
-        );
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          color: const Color(0xFFD1C4E9),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Center(
-          child: Text(
-            course,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF4A148C),
+  /// 🔹 BIG CARD WIDGET
+  Widget bigCard({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required String buttonText,
+    required bool enabled,
+    VoidCallback? onTap,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 18),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          /// ICON
+          CircleAvatar(
+            radius: 30,
+            backgroundColor: const Color(0xFFD1C4E9),
+            child: Icon(
+              icon,
+              size: 30,
+              color: const Color(0xFF4A148C),
             ),
           ),
-        ),
+
+          const SizedBox(height: 14),
+
+          /// TITLE
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+
+          const SizedBox(height: 4),
+
+          /// SUBTITLE
+          Text(
+            subtitle,
+            style: const TextStyle(
+              fontSize: 14,
+              color: Colors.black54,
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          /// BUTTON
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: ElevatedButton(
+              onPressed: enabled ? onTap : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: enabled
+                    ? const Color(0xFF7E57C2)
+                    : Colors.grey.shade300,
+                foregroundColor:
+                enabled ? Colors.white : Colors.black54,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              child: Text(
+                buttonText,
+                style: const TextStyle(fontSize: 16),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

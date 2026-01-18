@@ -1,15 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart';
 
-// Screens
-import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
-import 'screens/upload_notes_screen.dart'; // 👈 MUST ADD THIS IMPORT
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await Firebase.initializeApp();
   runApp(const NoteMatesApp());
 }
 
@@ -21,18 +17,15 @@ class NoteMatesApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'NoteMates',
-
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.purple),
-        useMaterial3: true,
+        primarySwatch: Colors.deepPurple,
       ),
+      home: const HomeScreen(),
 
-      home: const LoginScreen(),
-
-      routes: {
-        '/home': (context) => const HomeScreen(),
-        '/upload': (context) => const UploadNotesScreen(),
-      },
+      // ❌ REMOVE routes — NOT NEEDED
+      // routes: {
+      //   '/upload': (context) => UploadNotesScreen(),
+      // },
     );
   }
 }
