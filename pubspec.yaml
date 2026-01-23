@@ -12,7 +12,10 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # HTTP (for Dropbox API)
+  # Text-to-Speech
+  flutter_tts: ^3.7.0
+
+  # HTTP (for Dropbox API or future API calls)
   http: ^1.2.0
 
   # Firebase
@@ -20,11 +23,13 @@ dependencies:
   firebase_auth: ^4.17.0
   cloud_firestore: ^4.15.0
 
-  # Google Sign In
+  # Google Sign-In
   google_sign_in: ^6.3.0
 
   # File picker (Android SAFE)
   file_picker: ^8.0.0
+
+  # Open links in browser
   url_launcher: ^6.2.4
 
 dev_dependencies:
