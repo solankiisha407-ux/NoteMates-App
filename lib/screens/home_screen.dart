@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:notemates/screens/view_notes_screen.dart';
 import 'view_question_papers_screen.dart';
+import 'ai_features_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -33,16 +34,16 @@ class HomeScreen extends StatelessWidget {
 
           /// NOTES
           bigCard(
+            context: context,
             icon: Icons.menu_book,
             title: "Notes",
             subtitle: "Access & download notes",
             buttonText: "View Notes",
-            enabled: true,
             onTap: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => ViewNotesScreen(),
+                  builder: (_) => const ViewNotesScreen(),
                 ),
               );
             },
@@ -50,11 +51,11 @@ class HomeScreen extends StatelessWidget {
 
           /// QUESTION PAPERS
           bigCard(
+            context: context,
             icon: Icons.assignment,
             title: "Question Papers",
             subtitle: "Previous year question papers",
             buttonText: "View Papers",
-            enabled: true,
             onTap: () {
               Navigator.push(
                 context,
@@ -65,19 +66,26 @@ class HomeScreen extends StatelessWidget {
             },
           ),
 
-          /// AI FEATURES
+          /// AI FEATURES ✅ FIXED
           bigCard(
+            context: context,
             icon: Icons.auto_awesome,
             title: "AI Features",
             subtitle: "Smart learning tools",
-            buttonText: "Coming Soon",
-            enabled: false,
+            buttonText: "Explore AI tools",
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const AIFeaturesScreen(),
+                ),
+              );
+            },
           ),
 
-          const SizedBox(height: 24),
-
-          /// PROFILE
+          /// PROFILE (disabled)
           bigCard(
+            context: context,
             icon: Icons.person,
             title: "Profile",
             subtitle: "Manage your account",
@@ -89,13 +97,14 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  /// 🔹 BIG CARD WIDGET
+  /// 🔹 BIG CARD
   Widget bigCard({
+    required BuildContext context,
     required IconData icon,
     required String title,
     required String subtitle,
     required String buttonText,
-    required bool enabled,
+    bool enabled = true,
     VoidCallback? onTap,
   }) {
     return Container(
@@ -115,7 +124,6 @@ class HomeScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          /// ICON
           CircleAvatar(
             radius: 30,
             backgroundColor: const Color(0xFFD1C4E9),
@@ -128,7 +136,6 @@ class HomeScreen extends StatelessWidget {
 
           const SizedBox(height: 14),
 
-          /// TITLE
           Text(
             title,
             style: const TextStyle(
@@ -139,7 +146,6 @@ class HomeScreen extends StatelessWidget {
 
           const SizedBox(height: 4),
 
-          /// SUBTITLE
           Text(
             subtitle,
             style: const TextStyle(
@@ -150,7 +156,6 @@ class HomeScreen extends StatelessWidget {
 
           const SizedBox(height: 16),
 
-          /// BUTTON
           SizedBox(
             width: double.infinity,
             height: 48,

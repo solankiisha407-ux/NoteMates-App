@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import 'screens/home_screen.dart';
+import 'screens/login_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,15 +19,25 @@ class NoteMatesApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'NoteMates',
-      theme: ThemeData(
-        primarySwatch: Colors.deepPurple,
-      ),
-      home: const HomeScreen(),
+      theme: ThemeData(primarySwatch: Colors.deepPurple),
 
-      // ❌ REMOVE routes — NOT NEEDED
-      // routes: {
-      //   '/upload': (context) => UploadNotesScreen(),
-      // },
+      // ✅ AUTH STATE FIX
+      home: StreamBuilder<User?>(
+        stream: FirebaseAuth.instance.authStateChanges(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            );
+          }
+
+          if (snapshot.hasData) {
+            return const HomeScreen(); // ✅ logged in
+          }
+
+          return const LoginScreen(); // ❌ not logged in
+        },
+      ),
     );
   }
 }

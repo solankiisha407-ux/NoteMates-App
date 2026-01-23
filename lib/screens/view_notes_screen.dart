@@ -1,102 +1,193 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'upload_notes_screen.dart';
 
-class ViewNotesScreen extends StatelessWidget {
+class ViewNotesScreen extends StatefulWidget {
   const ViewNotesScreen({super.key});
+
+  @override
+  State<ViewNotesScreen> createState() => _ViewNotesScreenState();
+}
+
+class _ViewNotesScreenState extends State<ViewNotesScreen> {
+  String searchText = '';
+  String courseFilter = 'All';
+  String priceFilter = 'All'; // ✅ Free / Paid
+
+  final courses = ['All', 'BSc IT', 'BCA', 'BCom', 'Engineering', 'Other'];
+  final priceFilters = ['All', 'Free', 'Paid'];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FB),
+      backgroundColor: const Color(0xFFF3E5F5),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(16),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              /// 🔍 SEARCH
+              TextField(
+                decoration: InputDecoration(
+                  hintText: "Search notes...",
+                  prefixIcon: const Icon(Icons.search),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+                onChanged: (v) =>
+                    setState(() => searchText = v.toLowerCase()),
+              ),
 
-              /// 🔙 BACK
-              GestureDetector(
-                onTap: () => Navigator.pop(context),
-                child: const Row(
-                  children: [
-                    Icon(Icons.arrow_back, size: 18),
-                    SizedBox(width: 6),
-                    Text("Back to Home"),
-                  ],
+              const SizedBox(height: 10),
+
+
+              DropdownButtonFormField<String>(
+                value: courseFilter,
+                items: courses
+                    .map((c) =>
+                    DropdownMenuItem(value: c, child: Text(c)))
+                    .toList(),
+                onChanged: (v) => setState(() => courseFilter = v!),
+                decoration: const InputDecoration(
+                  labelText: "Filter by Course",
+                  border: OutlineInputBorder(),
                 ),
               ),
 
-              const SizedBox(height: 20),
+              const SizedBox(height: 10),
 
-              /// 🧾 TITLE
-              const Text(
-                "My Notes",
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
+
+              DropdownButtonFormField<String>(
+                value: priceFilter,
+                items: priceFilters
+                    .map((p) =>
+                    DropdownMenuItem(value: p, child: Text(p)))
+                    .toList(),
+                onChanged: (v) => setState(() => priceFilter = v!),
+                decoration: const InputDecoration(
+                  labelText: "Filter by Price",
+                  border: OutlineInputBorder(),
                 ),
               ),
 
-              const SizedBox(height: 6),
+              const SizedBox(height: 16),
 
-              const Text(
-                "Browse and download study notes",
-                style: TextStyle(color: Colors.black54),
-              ),
 
-              const SizedBox(height: 24),
-
-              /// 📚 NOTES FROM FIRESTORE
               Expanded(
                 child: StreamBuilder<QuerySnapshot>(
                   stream: FirebaseFirestore.instance
-                      .collection("notes")
-                      .orderBy("uploadedAt", descending: true)
+                      .collection('notes')
                       .snapshots(),
                   builder: (context, snapshot) {
-
-                    if (snapshot.connectionState ==
-                        ConnectionState.waiting) {
+                    if (!snapshot.hasData) {
                       return const Center(
-                        child: CircularProgressIndicator(),
-                      );
+                          child: CircularProgressIndicator());
                     }
 
-                    if (!snapshot.hasData ||
-                        snapshot.data!.docs.isEmpty) {
+                    final docs = snapshot.data!.docs.where((doc) {
+                      final data =
+                      doc.data() as Map<String, dynamic>;
+
+                      final title =
+                      (data['title'] ?? '').toString().toLowerCase();
+                      final course = data['course'] ?? '';
+                      final isPaid = data['isPaid'] ?? false;
+
+                      final matchSearch =
+                      title.contains(searchText);
+                      final matchCourse = courseFilter == 'All' ||
+                          course == courseFilter;
+                      final matchPrice = priceFilter == 'All' ||
+                          (priceFilter == 'Free' && !isPaid) ||
+                          (priceFilter == 'Paid' && isPaid);
+
+                      return matchSearch &&
+                          matchCourse &&
+                          matchPrice;
+                    }).toList();
+
+                    if (docs.isEmpty) {
                       return const Center(
-                        child: Text("No notes uploaded yet"),
-                      );
+                          child: Text("No notes found"));
                     }
 
-                    final notes = snapshot.data!.docs;
-
-                    return GridView.builder(
-                      itemCount: notes.length,
-                      gridDelegate:
-                      const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        mainAxisSpacing: 20,
-                        crossAxisSpacing: 20,
-                        childAspectRatio: 0.85,
-                      ),
-                      itemBuilder: (context, index) {
+                    return ListView.builder(
+                      itemCount: docs.length,
+                      itemBuilder: (context, i) {
                         final data =
-                        notes[index].data() as Map<String, dynamic>;
+                        docs[i].data() as Map<String, dynamic>;
+                        final isPaid = data['isPaid'] ?? false;
 
-                        return NotesCard(
-                          title: data['title'] ?? '',
-                          subject: data['subject'] ?? '',
-                          description:
-                          data['description'] ?? '',
-                          uploaded:
-                          _formatDate(data['uploadedAt']),
-                          isPaid: data['isPaid'] ?? false,
-                          price:
-                          (data['price'] ?? 0).toDouble(),
-                          fileUrl: data['file_url'] ?? '',
+                        return Card(
+                          margin:
+                          const EdgeInsets.only(bottom: 12),
+                          shape: RoundedRectangleBorder(
+                              borderRadius:
+                              BorderRadius.circular(16)),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment:
+                              CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        data['title'] ?? '',
+                                        style: const TextStyle(
+                                            fontSize: 16,
+                                            fontWeight:
+                                            FontWeight.bold),
+                                      ),
+                                    ),
+                                    Chip(
+                                      label: Text(isPaid
+                                          ? "₹${data['price']}"
+                                          : "FREE"),
+                                      backgroundColor: isPaid
+                                          ? Colors.orange.shade200
+                                          : Colors.green.shade200,
+                                    ),
+                                  ],
+                                ),
+                                Text(
+                                  data['subject'] ?? '',
+                                  style: const TextStyle(
+                                      color: Colors.deepPurple),
+                                ),
+                                const SizedBox(height: 10),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: ElevatedButton(
+                                    style:
+                                    ElevatedButton.styleFrom(
+                                      backgroundColor: isPaid
+                                          ? Colors.orange
+                                          : const Color(0xFF7E57C2),
+                                    ),
+                                    onPressed: () async {
+                                      if (isPaid) return;
+
+                                      final url = Uri.parse(
+                                          data['file_url']);
+                                      await launchUrl(url,
+                                          mode: LaunchMode
+                                              .externalApplication);
+                                    },
+                                    child: Text(isPaid
+                                        ? "Purchase"
+                                        : "Download"),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         );
                       },
                     );
@@ -104,212 +195,31 @@ class ViewNotesScreen extends StatelessWidget {
                 ),
               ),
 
-              /// ⬆️ UPLOAD SECTION
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEFF5FF),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFD6E4FF),
-                        borderRadius: BorderRadius.circular(12),
+              /// ⬆️ UPLOAD BUTTON (FIXED)
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton.icon(
+                  icon: const Icon(Icons.upload),
+                  label: const Text("Upload Notes"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor:
+                    const Color(0xFF7E57C2),
+                  ),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                        const UploadNotesScreen(),
                       ),
-                      child: const Icon(Icons.upload),
-                    ),
-
-                    const SizedBox(width: 12),
-
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment:
-                        CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "Upload Your Notes",
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          SizedBox(height: 4),
-                          Text(
-                            "Share your study materials with others",
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.black54,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.black,
-                        shape: RoundedRectangleBorder(
-                          borderRadius:
-                          BorderRadius.circular(10),
-                        ),
-                      ),
-                      onPressed: () {
-                        // TODO: navigate to UploadNotesScreen
-                      },
-                      child: const Text("Upload Notes"),
-                    ),
-                  ],
+                    );
+                  },
                 ),
               ),
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  /// 📅 FORMAT DATE
-  static String _formatDate(Timestamp? timestamp) {
-    if (timestamp == null) return "";
-    final date = timestamp.toDate();
-    return "${date.day}/${date.month}/${date.year}";
-  }
-}
-
-/// 🧩 NOTES CARD
-class NotesCard extends StatelessWidget {
-  final String title;
-  final String subject;
-  final String description;
-  final String uploaded;
-  final bool isPaid;
-  final double price;
-  final String fileUrl;
-
-  const NotesCard({
-    super.key,
-    required this.title,
-    required this.subject,
-    required this.description,
-    required this.uploaded,
-    required this.isPaid,
-    required this.price,
-    required this.fileUrl,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(color: Colors.black12, blurRadius: 6),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-
-          /// TITLE + BADGE
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: isPaid
-                      ? Colors.orange[100]
-                      : Colors.green[100],
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  isPaid ? "₹$price" : "FREE",
-                  style: TextStyle(
-                    fontSize: 12,
-                    color:
-                    isPaid ? Colors.orange : Colors.green,
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 6),
-
-          /// SUBJECT
-          Text(
-            subject,
-            style: const TextStyle(
-              color: Colors.blue,
-              fontSize: 12,
-            ),
-          ),
-
-          const SizedBox(height: 8),
-
-          /// DESCRIPTION
-          Text(
-            description,
-            style: const TextStyle(fontSize: 12),
-          ),
-
-          const Spacer(),
-
-          /// DATE
-          Text(
-            "Uploaded: $uploaded",
-            style: const TextStyle(
-              fontSize: 11,
-              color: Colors.black45,
-            ),
-          ),
-
-          const SizedBox(height: 10),
-
-          /// BUTTON
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              icon: Icon(
-                isPaid ? Icons.lock : Icons.download,
-                size: 16,
-              ),
-              label: Text(
-                isPaid ? "Purchase" : "Download",
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.black,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              onPressed: () async {
-                if (isPaid) return;
-
-                final uri = Uri.parse(fileUrl);
-                if (await canLaunchUrl(uri)) {
-                  await launchUrl(
-                    uri,
-                    mode: LaunchMode.externalApplication,
-                  );
-                }
-              },
-            ),
-          ),
-        ],
       ),
     );
   }
